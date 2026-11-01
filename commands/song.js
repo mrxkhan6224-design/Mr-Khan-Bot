@@ -3,179 +3,219 @@ const yts = require('yt-search');
 const fs = require('fs');
 const path = require('path');
 const { toAudio } = require('../lib/converter');
+const APIs = require('../lib/api');
 
-// ============================================
-// 🔑 TornadoAPI Configuration
-// ============================================
-const TORNADO_API_KEY = 'sk_tornadoapi_trial_wp5glD_kfkucVVhuNKrUufJAPSixnHj9WuGNtUQ8Cb9nBl1tZdwgQeHU2cxJcsUcM8To1THZmqkNUAzJ67NFnw';
-const TORNADO_BASE = 'https://api.tornadoapi.io';
+const {
+  UA,
+  isIpLockedCdn,
+  knightSongDownload,
+  hectorSongDownload,
+  princeSongDownload,
+  prexzySongDownload,
+} = APIs;
 
-// ============================================
-// Create Job via TornadoAPI
-// ============================================
-async function createTornadoJob(videoUrl) {
-    console.log('🎵 Creating TornadoAPI job...');
-    const res = await axios.post(`${TORNADO_BASE}/jobs`, {
-        url: videoUrl,
-        format: 'mp3'
-    }, {
-        headers: {
-            'x-api-key': TORNADO_API_KEY,
-            'Content-Type': 'application/json'
-        },
-        timeout: 30000
-    });
-
-    if (!res.data?.job_id) {
-        throw new Error('No job_id returned: ' + JSON.stringify(res.data));
-    }
-
-    console.log(`✅ Job created: ${res.data.job_id}`);
-    return res.data.job_id;
+function extractYouTubeId(input) {
+  const text = String(input || '').trim();
+  const m =
+    text.match(/(?:youtube\.com\/(?:watch\?.*?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i) ||
+    text.match(/^([a-zA-Z0-9_-]{11})$/);
+  return m?.[1] || null;
 }
 
-// ============================================
-// Poll Job Status
-// ============================================
-async function pollJobStatus(jobId, maxWaitMs = 180000) {
-    const start = Date.now();
-    const pollInterval = 3000; // 3 seconds
-
-    while (Date.now() - start < maxWaitMs) {
-        try {
-            const res = await axios.get(`${TORNADO_BASE}/jobs/${jobId}`, {
-                headers: { 'x-api-key': TORNADO_API_KEY },
-                timeout: 20000
-            });
-
-            const status = res.data?.status;
-            console.log(`⏳ Job status: ${status}`);
-
-            if (status === 'Completed') {
-                const s3Url = res.data?.s3_url;
-                if (!s3Url) throw new Error('No s3_url in completed response');
-                console.log('✅ Job completed!');
-                return s3Url;
-            }
-
-            if (['Failed', 'Warning', 'Skipped', 'Cancelled', 'CancelledByAdmin'].includes(status)) {
-                const reason = res.data?.failure_reason || res.data?.reason || status;
-                throw new Error(`Job ${status}: ${reason}`);
-            }
-
-            // Pending or Processing - wait and retry
-            await new Promise(r => setTimeout(r, pollInterval));
-        } catch (e) {
-            if (e.message.includes('Job')) throw e; // Job failed, rethrow
-            console.log(`⚠️ Poll error: ${e.message}`);
-            await new Promise(r => setTimeout(r, pollInterval));
+async function resolveVideoInfo(text) {
+  if (/youtube\.com|youtu\.be/i.test(text)) {
+    const videoId = extractYouTubeId(text);
+    if (videoId) {
+      try {
+        const info = await yts({ videoId });
+        if (info?.videoId || info?.url) {
+          return {
+            url: info.url || `https://www.youtube.com/watch?v=${videoId}`,
+            title: info.title || 'YouTube Audio',
+            thumbnail: info.thumbnail || info.image || null,
+            timestamp: info.timestamp || info.duration?.timestamp || '—',
+          };
         }
+      } catch (err) {
+        console.log('[song] yts videoId lookup failed:', err?.message || err);
+      }
     }
+    return { url: text.trim(), title: 'YouTube Audio', thumbnail: null, timestamp: '—' };
+  }
 
-    throw new Error('Job timed out (3 min)');
+  const search = await yts(text);
+  if (!search?.videos?.length) return null;
+  return search.videos[0];
 }
 
-// ============================================
-// MAIN COMMAND
-// ============================================
-async function songCommand(sock, chatId, message) {
+async function fetchAudioBuffer(audioUrl, headers, attempts = 3) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-        const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-        if (!text) {
-            await sock.sendMessage(chatId, { text: 'Usage: .song <song name or YouTube link>' }, { quoted: message });
-            return;
-        }
-
-        let videoUrl, videoTitle = 'Your song', videoThumbnail = '', videoDuration = '';
-
-        if (text.includes('youtube.com') || text.includes('youtu.be')) {
-            videoUrl = text.trim();
-        } else {
-            const search = await yts(text);
-            if (!search || !search.videos.length) {
-                await sock.sendMessage(chatId, { text: 'No results found.' }, { quoted: message });
-                return;
-            }
-            const first = search.videos[0];
-            videoUrl = first.url;
-            videoTitle = first.title;
-            videoThumbnail = first.thumbnail;
-            videoDuration = first.timestamp;
-        }
-
-        if (videoThumbnail) {
-            await sock.sendMessage(chatId, {
-                image: { url: videoThumbnail },
-                caption: `🎵 Downloading: *${videoTitle}*\n⏱ Duration: ${videoDuration || 'N/A'}`
-            }, { quoted: message });
-        } else {
-            await sock.sendMessage(chatId, { text: `🎵 Downloading: *${videoTitle}*...` }, { quoted: message });
-        }
-
-        // Step 1: Create job
-        const jobId = await createTornadoJob(videoUrl);
-
-        // Step 2: Poll until complete
-        const audioUrl = await pollJobStatus(jobId);
-
-        // Step 3: Download audio
-        console.log('📥 Downloading audio file...');
-        const audioRes = await axios.get(audioUrl, {
-            responseType: 'arraybuffer',
-            timeout: 120000,
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity
-        });
-        const audioBuffer = Buffer.from(audioRes.data);
-
-        if (!audioBuffer || audioBuffer.length === 0) throw new Error('Empty audio buffer');
-        console.log(`✅ Downloaded ${audioBuffer.length} bytes`);
-
-        // Step 4: Detect format
-        const firstBytes = audioBuffer.slice(0, 12);
-        const asciiSig = firstBytes.toString('ascii', 4, 8);
-        let fileExtension = 'mp3';
-
-        if (asciiSig === 'ftyp') fileExtension = 'm4a';
-        else if (audioBuffer.toString('ascii', 0, 4) === 'OggS') fileExtension = 'ogg';
-        else if (audioBuffer.toString('ascii', 0, 4) === 'RIFF') fileExtension = 'wav';
-        else if (audioBuffer[0] === 0x1A && audioBuffer[1] === 0x45) fileExtension = 'webm';
-
-        // Step 5: Convert to MP3 if needed
-        let finalBuffer = audioBuffer;
-        let finalMimetype = 'audio/mpeg';
-        let finalExtension = fileExtension;
-
-        if (fileExtension !== 'mp3') {
-            try {
-                console.log(`🔄 Converting ${fileExtension} to MP3...`);
-                finalBuffer = await toAudio(audioBuffer, fileExtension);
-                finalExtension = 'mp3';
-                finalMimetype = 'audio/mpeg';
-                console.log('✅ Conversion successful');
-            } catch (e) {
-                console.log(`⚠️ Conversion failed, sending ${fileExtension}`);
-                finalMimetype = fileExtension === 'm4a' ? 'audio/mp4' : 'audio/webm';
-            }
-        }
-
-        const safeTitle = (videoTitle || 'song').replace(/[^\w\s-]/g, '').trim() || 'song';
-
-        await sock.sendMessage(chatId, {
-            audio: finalBuffer,
-            mimetype: finalMimetype,
-            fileName: `${safeTitle}.${finalExtension}`,
-            ptt: false
-        }, { quoted: message });
-
-        console.log(`✅ Song sent: ${safeTitle}.${finalExtension}`);
-
+      const res = await axios.get(audioUrl, {
+        responseType: 'arraybuffer',
+        timeout: 120000,
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        decompress: true,
+        validateStatus: (s) => s >= 200 && s < 400,
+        headers,
+      });
+      const buf = Buffer.from(res.data);
+      if (buf.length > 0) return buf;
+      throw new Error('Empty audio buffer');
     } catch (err) {
-        console.error('❌ Song command error:', err.message);
-        await sock.sendMessage(chatId, {
-            text: `❌ Failed: ${err.message}`
-        }, { quoted: message });
+      lastError = err;
+      const status = err.response?.status;
+      if (status === 403 || status === 451) throw err;
+      console.log(`[song] file fetch ${attempt}/${attempts}:`, status || err.code || err.message);
+      if (attempt < attempts) await APIs.sleep(1200 * attempt);
     }
+  }
+  throw lastError || new Error('Failed to fetch audio file');
+}
+
+function detectAudioFormat(buf) {
+  if (!buf || buf.length < 12) return null;
+  if (buf.toString('ascii', 4, 8) === 'ftyp') return { name: 'M4A/MP4', ext: 'm4a' };
+  if (buf.toString('ascii', 0, 3) === 'ID3' || (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0)) {
+    return { name: 'MP3', ext: 'mp3' };
+  }
+  if (buf.toString('ascii', 0, 4) === 'OggS') return { name: 'OGG/Opus', ext: 'ogg' };
+  if (buf.toString('ascii', 0, 4) === 'RIFF') return { name: 'WAV', ext: 'wav' };
+  if (buf.readUInt32BE(0) === 0x1a45dfa3) return { name: 'WebM', ext: 'webm' };
+  return null;
+}
+
+async function songCommand(sock, chatId, message) {
+  try {
+    const raw =
+      message.message?.conversation ||
+      message.message?.extendedTextMessage?.text ||
+      '';
+    const text = raw.replace(/^\.(?:play|song|mp3|ytmp3)\s*/i, '').trim();
+
+    if (!text) {
+      await sock.sendMessage(chatId, { text: 'Usage: .song <song name or YouTube link>' }, { quoted: message });
+      return;
+    }
+
+    const video = await resolveVideoInfo(text);
+    if (!video?.url) {
+      await sock.sendMessage(chatId, { text: 'No results found.' }, { quoted: message });
+      return;
+    }
+
+    const caption = `🎵 Downloading: *${video.title || 'YouTube Audio'}*\n⏱ Duration: ${video.timestamp || '—'}`;
+    if (video.thumbnail && /^https?:\/\//i.test(video.thumbnail)) {
+      await sock.sendMessage(chatId, { image: { url: video.thumbnail }, caption }, { quoted: message });
+    } else {
+      await sock.sendMessage(chatId, { text: caption }, { quoted: message });
+    }
+
+    let audioData;
+    let audioBuffer;
+
+    // Knight first; rest are fallbacks (same sources as mini)
+    const apiMethods = [
+      { name: 'Knight API', method: () => knightSongDownload(video.url) },
+      { name: 'Hector', method: () => hectorSongDownload(video.url) },
+      { name: 'Prince API', method: () => princeSongDownload(video.url) },
+      { name: 'Prexzy', method: () => prexzySongDownload(video.url) },
+      { name: 'EliteProTech', method: () => APIs.getEliteProTechDownloadByUrl(video.url) },
+      { name: 'Yupra', method: () => APIs.getYupraDownloadByUrl(video.url) },
+      { name: 'Okatsu', method: () => APIs.getOkatsuDownloadByUrl(video.url) },
+      { name: 'Izumi', method: () => APIs.getIzumiDownloadByUrl(video.url) },
+    ];
+
+    for (const apiMethod of apiMethods) {
+      try {
+        audioData = await apiMethod.method();
+        const audioUrl =
+          audioData.download || audioData.audio || audioData.downloadUrl || audioData.dl || audioData.url;
+
+        if (!audioUrl) {
+          console.log(`${apiMethod.name} returned no download URL, trying next...`);
+          continue;
+        }
+        if (isIpLockedCdn(audioUrl)) {
+          console.log(`${apiMethod.name} gave IP-locked CDN URL, trying next...`);
+          continue;
+        }
+
+        const headers = {
+          'User-Agent': UA,
+          Accept: '*/*',
+          'Accept-Encoding': 'identity',
+        };
+        if (audioData.referer) headers.Referer = audioData.referer;
+
+        try {
+          audioBuffer = await fetchAudioBuffer(audioUrl, headers);
+          if (!audioBuffer?.length || !detectAudioFormat(audioBuffer)) {
+            console.log(`${apiMethod.name} returned non-audio, trying next...`);
+            audioBuffer = null;
+            continue;
+          }
+          console.log(`[song] OK via ${apiMethod.name} (${audioBuffer.length} bytes)`);
+          break;
+        } catch (downloadErr) {
+          console.log(
+            `Download failed from ${apiMethod.name}:`,
+            downloadErr.response?.status || downloadErr.code || downloadErr.message
+          );
+        }
+      } catch (apiErr) {
+        console.log(`${apiMethod.name} API failed:`, apiErr.message);
+      }
+    }
+
+    if (!audioBuffer?.length) {
+      throw new Error('All download sources failed. The content may be unavailable or blocked.');
+    }
+
+    const detected = detectAudioFormat(audioBuffer);
+    let finalBuffer = audioBuffer;
+    let finalExtension = 'mp3';
+
+    if (detected.ext !== 'mp3') {
+      finalBuffer = await toAudio(audioBuffer, detected.ext);
+      if (!finalBuffer?.length) throw new Error(`Failed to convert ${detected.name} to MP3`);
+    }
+
+    await sock.sendMessage(
+      chatId,
+      {
+        audio: finalBuffer,
+        mimetype: 'audio/mpeg',
+        fileName: `${(audioData.title || video.title || 'song').replace(/[^\w\s-]/g, '')}.${finalExtension}`,
+        ptt: false,
+      },
+      { quoted: message }
+    );
+
+    try {
+      const tempDir = path.join(__dirname, '../temp');
+      if (!fs.existsSync(tempDir)) return;
+      const now = Date.now();
+      for (const file of fs.readdirSync(tempDir)) {
+        if (!(file.endsWith('.mp3') || file.endsWith('.m4a') || /^\d+\.(mp3|m4a)$/.test(file))) continue;
+        const filePath = path.join(tempDir, file);
+        try {
+          if (now - fs.statSync(filePath).mtimeMs > 10000) fs.unlinkSync(filePath);
+        } catch {}
+      }
+    } catch {}
+  } catch (err) {
+    console.error('Song command error:', err);
+    let errorMessage = '❌ Failed to download song.';
+    if (err.message?.includes('All download sources failed')) {
+      errorMessage = '❌ All download sources failed. The content may be unavailable or blocked.';
+    } else if (err.message?.includes('blocked') || err.response?.status === 451) {
+      errorMessage = '❌ Download blocked or unavailable in your region.';
+    }
+    await sock.sendMessage(chatId, { text: errorMessage }, { quoted: message });
+  }
 }
 
 module.exports = songCommand;
