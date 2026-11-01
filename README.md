@@ -9,7 +9,7 @@ This is a WhatsApp bot built using the Baileys library for group management, inc
 </div> 
 
 <div align="center"> 
-  <a href="[https://youtube.com/@mr_unique_hacker](https://www.youtube.com/@mr.khan.musics)"> 
+  <a href="https://www.youtube.com/@mr.khan.musics"> 
     <img src="https://github.com/mrxkhan6224-design/Mr-Khan-Bot/blob/main/assets/bot_image.jpg"> 
   </a> 
 </div>
@@ -20,10 +20,10 @@ This is a WhatsApp bot built using the Baileys library for group management, inc
 
 ### Step 1: Fork the Repository
 
-Click the button below to fork the Knight Bot repository to your GitHub account:
+Click the button below to fork the Mr. Khan Bot repository to your GitHub account:
 
 <div align="center">
-  <a href="https://github.com/mruniquehacker/Knightbot-MD/fork">
+  <a href="https://github.com/mrxkhan6224-design/Mr-Khan-Bot/fork">
     <img src="https://img.shields.io/badge/Fork-Repository-blue?style=for-the-badge" alt="Fork the repository"/>
   </a>
 </div>
@@ -46,7 +46,6 @@ Deploy the bot and easily connect it to your WhatsApp account by pair code. Clic
   </a>
 </div>
 
-
 ### After getting creds.json file, upload it to session folder
 
 ---
@@ -63,7 +62,6 @@ For further customization and setup guidance, click the button below:
     <img src="https://img.shields.io/badge/Deploy on Panel-28a745?style=for-the-badge" alt="Deploy on Panel"/>
   </a>
 </div>
-
 
 ### Deploy Now on Below Panel
 <div align="center">
@@ -99,7 +97,7 @@ For further customization and setup guidance, click the button below:
 
 ## 📖 About
 
-The Knight WhatsApp Bot assists group admins by providing them with tools to efficiently manage large WhatsApp groups. The bot uses the Baileys library to interact with the WhatsApp Web API and supports multi-device features.
+The Mr. Khan WhatsApp Bot assists group admins by providing them with tools to efficiently manage large WhatsApp groups. The bot uses the Baileys library to interact with the WhatsApp Web API and supports multi-device features.
 
 It is lightweight and can be easily customized to add more commands as per your requirements. The bot runs in a Node.js environment and provides QR code-based authentication to link your WhatsApp account.
 
@@ -117,78 +115,5 @@ It is lightweight and can be easily customized to add more commands as per your 
 1. **Clone the repository:**
 
     ```bash
-    git clone https://github.com/mruniquehacker/Knightbot-MD.git
-    cd Knightbot-MD
-    ```
-
-2. **Install the dependencies:**
-
-    ```bash
-    npm install
-    ```
-
-3. **Run the bot:**
-
-    ```bash
-    node index.js
-    ```
-
-4. **Scan the QR code:**
-
-    Once the bot starts, a QR code will appear in the terminal. Scan this QR code using the Linked Devices feature in WhatsApp to connect your WhatsApp account with the bot.
-
----
-
-
-## 📄 License
-
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT) - see the [LICENSE](https://github.com/mruniquehacker/Knightbot-MD/blob/main/LICENSE) file for details.
-
----
-
-## 🙌 Contributions
-
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/mruniquehacker/Knightbot-MD/issues).
-
----
-
-## 🌟 Show your support
-
-If you like this project, please give it a [⭐️ star on GitHub](https://github.com/mruniquehacker/Knightbot)!
-
-
-## Credits
-
-- [Professor](https://github.com/mruniquehacker)
-- [Baileys](https://github.com/adiwajshing/Baileys)
-- [TechGod143](https://github.com/TechGod143) for pair code
-- [Dgxeon](https://github.com/Dgxeon) for pair code
-
----
-
-## ⚠️ Important Warning
-
-**Note:** This bot is created for educational purposes only. This is NOT an official WhatsApp bot. Using this bot may lead to your WhatsApp account being banned. Use it at your own risk. The developers will not be responsible for any consequences or account bans that may occur while using this bot.
-
-## 📝 Legal
-
-- This project is not affiliated with, authorized, maintained, sponsored or endorsed by WhatsApp or any of its affiliates or subsidiaries.
-- This is an independent and unofficial software. Use at your own risk.
-- Do not spam people with this bot.
-- Do not use this bot to send bulk messages or for illegal purposes.
-- The developers assume no liability and are not responsible for any misuse or damage caused by this program.
-
-### License
-This project is licensed under the MIT License. However, you must:
-- Use this software in compliance with all applicable laws and regulations
-- Include original license and copyright notices
-- Credit original authors
-- Not use for spam or malicious purposes
-
-## 📜 Copyright Notice
-
-Copyright (c) 2024 Professor. All rights reserved.
-
-This project contains code from various open source projects:
-- Baileys (MIT License)
-- Other libraries as listed in package.json
+    git clone https://github.com/mrxkhan6224-design/Mr-Khan-Bot.git
+    cd Mr-Khan-Bot
