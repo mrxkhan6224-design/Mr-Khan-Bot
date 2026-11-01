@@ -4,7 +4,7 @@ This is a WhatsApp bot built using the Baileys library for group management, inc
 
 <div align="center"> 
   <a href="https://git.io/typing-svg"> 
-    <img src="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&pause=1000&color=F73838&width=435&lines=Mr.+Khan-Bot+;Multi+Devices+Whatsapp+Bot+;Coded+By+Mr.+Khan" alt="Typing SVG" />
+    <img src="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&pause=1000&color=F73838&width=435&lines=Mr.+Khan-Bot+;Multi+Devices+Whatsapp+Bot+;Coded+By+Mr.+Khan" />
   </a> 
 </div> 
 
