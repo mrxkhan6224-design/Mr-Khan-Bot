@@ -26,6 +26,7 @@ const FileType = require('file-type')
 const path = require('path')
 const axios = require('axios')
 const { handleMessages, handleGroupParticipantUpdate, handleStatus } = require('./main');
+const { handleAntibotDetection } = require('./commands/antibot'); // ✅ NEW ADDED
 const PhoneNumber = require('awesome-phonenumber')
 const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./lib/exif')
 const { smsg, isUrl, generateMessageTag, getBuffer, getSizeMedia, fetch, await, sleep, reSize } = require('./lib/myfunc')
@@ -69,7 +70,7 @@ setInterval(() => {
 setInterval(() => {
     const used = process.memoryUsage().rss / 1024 / 1024
     if (used > 250) {
-        console.log('⚠️ RAM too high (>280MB), restarting bot...')
+        console.log('⚠️ RAM too high (>250MB), restarting bot...')
         process.exit(1)
     }
 }, 30_000)
@@ -130,6 +131,16 @@ async function startXeonBotInc() {
                 return;
             }
             if (!XeonBotInc.public && !mek.key.fromMe && chatUpdate.type === 'notify') return
+            
+            // ✅ ANTIBOT DETECTION HOOK (Yahan add kiya gaya hai)
+            if (mek.key?.remoteJid?.endsWith('@g.us') && !mek.key.fromMe) {
+                try {
+                    await handleAntibotDetection(XeonBotInc, mek)
+                } catch (abErr) {
+                    console.error('[antibot] upsert hook:', abErr?.message || abErr)
+                }
+            }
+            
             if (mek.key.id.startsWith('BAE5') && mek.key.id.length === 16) return
 
             if (XeonBotInc?.msgRetryCounterCache) {
