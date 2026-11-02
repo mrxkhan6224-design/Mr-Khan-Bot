@@ -33,6 +33,7 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .groupinfo
 ║ ➤ .staff or .admins 
 ║ ➤ .vv
+║ ➤ .vv2
 ║ ➤ .trt <text> <lang>
 ║ ➤ .ss <link>
 ║ ➤ .jid
@@ -66,6 +67,7 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .setgdesc <description>
 ║ ➤ .setgname <new name>
 ║ ➤ .setgpp (reply to image)
+║ ➤ .groupstatus [caption/text]
 ╚═══════════════════╝
 
 ╔═══════════════════╗
@@ -192,6 +194,7 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .instagram <link>
 ║ ➤ .facebook <link>
 ║ ➤ .tiktok <link>
+║ ➤ .twitter <link>
 ║ ➤ .video <song name>
 ║ ➤ .ytmp4 <Link>
 ║ ➤ .pinterest <Link>
