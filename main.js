@@ -103,8 +103,14 @@ const emojimixCommand = require('./commands/emojimix');
 const { handlePromotionEvent } = require('./commands/promote');
 const { handleDemotionEvent } = require('./commands/demote');
 const viewOnceCommand = require('./commands/viewonce');
+const vv2Command = require('./commands/vv2'); // NEW
 const clearSessionCommand = require('./commands/clearsession');
 const { autoStatusCommand, handleStatusUpdate } = require('./commands/autostatus');
+const savestatusCommand = require('./commands/savestatus'); // NEW
+const { autoSave: savestatusAutoSave } = savestatusCommand; // NEW
+const groupstatusCommand = require('./commands/groupstatus'); // NEW
+const antibotCommand = require('./commands/antibot'); // NEW
+const { handleAntibotDetection } = antibotCommand; // NEW
 const { simpCommand } = require('./commands/simp');
 const { stupidCommand } = require('./commands/stupid');
 const stickerTelegramCommand = require('./commands/stickertelegram');
@@ -115,8 +121,9 @@ const setProfilePicture = require('./commands/setpp');
 const { setGroupDescription, setGroupName, setGroupPhoto } = require('./commands/groupmanage');
 const instagramCommand = require('./commands/instagram');
 const facebookCommand = require('./commands/facebook');
-const pinterestCommand = require('./commands/pinterest');
-const snapchatCommand = require('./commands/snapchat');
+const pinterestCommand = require('./commands/pinterest'); // USER CUSTOM
+const snapchatCommand = require('./commands/snapchat'); // USER CUSTOM
+const twitterCommand = require('./commands/twitter'); // NEW
 const spotifyCommand = require('./commands/spotify');
 const playCommand = require('./commands/play');
 const tiktokCommand = require('./commands/tiktok');
@@ -144,11 +151,11 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
-const audiofxCommand = require('./commands/audiofx');
+const audiofxCommand = require('./commands/audiofx'); // USER CUSTOM
 
 // 📖 Quran Commands Import
-const quranCommand = require('./commands/quran');
-const surahmenuCommand = require('./commands/surahmenu');
+const quranCommand = require('./commands/quran'); // USER CUSTOM
+const surahmenuCommand = require('./commands/surahmenu'); // USER CUSTOM
 
 // Global settings
 global.packname = settings.packname;
@@ -270,6 +277,13 @@ async function handleMessages(sock, messageUpdate, printLog) {
         if (!message.key.fromMe) incrementMessageCount(chatId, senderId);
 
         if (isGroup) {
+            // ✅ NEW: Antibot detection hook
+            try {
+                await handleAntibotDetection(sock, message);
+            } catch (abErr) {
+                console.error('[antibot] upsert hook:', abErr?.message || abErr);
+            }
+
             if (userMessage) {
                 await handleBadwordDetection(sock, chatId, message, userMessage, senderId);
             }
@@ -308,10 +322,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
             return;
         }
 
-        const adminCommands = ['.mute', '.unmute', '.ban', '.unban', '.promote', '.demote', '.kick', '.tagall', '.tagnotadmin', '.hidetag', '.antilink', '.antitag', '.setgdesc', '.setgname', '.setgpp'];
+        const adminCommands = ['.mute', '.unmute', '.ban', '.unban', '.promote', '.demote', '.kick', '.tagall', '.tagnotadmin', '.hidetag', '.antilink', '.antitag', '.antibot', '.nobot', '.setgdesc', '.setgname', '.setgpp', '.groupstatus', '.togstatus', '.swgc', '.gstatus', '.gs'];
         const isAdminCommand = adminCommands.some(cmd => userMessage.startsWith(cmd));
 
-        const ownerCommands = ['.mode', '.autostatus', '.antidelete', '.cleartmp', '.setpp', '.clearsession', '.areact', '.autoreact', '.autotyping', '.autoread', '.pmblocker'];
+        const ownerCommands = ['.mode', '.autostatus', '.savestatus', '.savesm', '.savest', '.antidelete', '.cleartmp', '.setpp', '.clearsession', '.areact', '.autoreact', '.autotyping', '.autoread', '.pmblocker'];
         const isOwnerCommand = ownerCommands.some(cmd => userMessage.startsWith(cmd));
 
         let isSenderAdmin = false;
@@ -533,6 +547,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 const messageText = rawText.slice(4).trim();
                 const replyMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage || null;
                 await tagCommand(sock, chatId, senderId, messageText, replyMessage, message);
+                break;
+            case userMessage.startsWith('.antibot') || userMessage.startsWith('.nobot'):
+                await antibotCommand(sock, chatId, message, senderId);
                 break;
             case userMessage.startsWith('.antilink'):
                 if (!isGroup) {
@@ -821,12 +838,21 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage === '.vv':
                 await viewOnceCommand(sock, chatId, message);
                 break;
+            case userMessage === '.vv2':
+                await vv2Command(sock, chatId, message, senderId);
+                break;
             case userMessage === '.clearsession' || userMessage === '.clearsesi':
                 await clearSessionCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.autostatus'):
                 const autoStatusArgs = userMessage.split(' ').slice(1);
                 await autoStatusCommand(sock, chatId, message, autoStatusArgs);
+                break;
+            case userMessage.startsWith('.savestatus') || userMessage.startsWith('.savesm') || userMessage.startsWith('.savest'):
+                await savestatusCommand(sock, chatId, message, senderId);
+                break;
+            case userMessage.startsWith('.groupstatus') || userMessage.startsWith('.togstatus') || userMessage.startsWith('.swgc') || userMessage.startsWith('.gstatus') || userMessage === '.gs' || userMessage.startsWith('.gs '):
+                await groupstatusCommand(sock, chatId, message, senderId);
                 break;
             case userMessage.startsWith('.simp'):
                 await simpCommand(sock, chatId, message);
@@ -930,6 +956,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage.startsWith('.snap') || userMessage.startsWith('.snapchat'):
                 await snapchatCommand(sock, chatId, message);
+                break;
+            case userMessage.startsWith('.twitter') || userMessage.startsWith('.x ') || userMessage === '.x' || userMessage.startsWith('.xdl') || userMessage.startsWith('.twdl'):
+                await twitterCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.music'):
                 await playCommand(sock, chatId, message);
@@ -1294,5 +1323,14 @@ module.exports = {
     handleGroupParticipantUpdate,
     handleStatus: async (sock, status) => {
         await handleStatusUpdate(sock, status);
+        try {
+            // Only full status messages (messages.upsert) — never reactions / empty updates
+            const msg = status.messages?.[0];
+            if (msg?.message && msg.key?.remoteJid === 'status@broadcast') {
+                await savestatusAutoSave(sock, msg);
+            }
+        } catch (e) {
+            console.error('[savestatus] hook:', e?.message || e);
+        }
     }
 };
