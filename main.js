@@ -153,6 +153,9 @@ const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
 const audiofxCommand = require('./commands/audiofx'); // USER CUSTOM
 
+// 📸 DP Save Command (NEW)
+const dpsaveCommand = require('./commands/dpsave'); // NEW
+
 // 📖 Quran Commands Import
 const quranCommand = require('./commands/quran'); // USER CUSTOM
 const surahmenuCommand = require('./commands/surahmenu'); // USER CUSTOM
@@ -840,6 +843,11 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage === '.vv2':
                 await vv2Command(sock, chatId, message, senderId);
+                break;
+            // 📸 DP SAVE COMMAND (NEW)
+            case userMessage === '.dpsave' || userMessage === '.dp' || userMessage.startsWith('.dpsave ') || userMessage.startsWith('.dp '):
+                await dpsaveCommand(sock, chatId, message);
+                commandExecuted = true;
                 break;
             case userMessage === '.clearsession' || userMessage === '.clearsesi':
                 await clearSessionCommand(sock, chatId, message);
