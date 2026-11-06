@@ -107,7 +107,7 @@ const vv2Command = require('./commands/vv2'); // NEW
 const clearSessionCommand = require('./commands/clearsession');
 const { autoStatusCommand, handleStatusUpdate } = require('./commands/autostatus');
 const savestatusCommand = require('./commands/savestatus'); // NEW
-const { autoSave: savestatusAutoSave } = savestatusCommand; // NEW
+// const { autoSave: savestatusAutoSave } = savestatusCommand; // ❌ COMMENT OUT KAR DIYA (AutoSave nahi chahiye)
 const groupstatusCommand = require('./commands/groupstatus'); // NEW
 const antibotCommand = require('./commands/antibot'); // NEW
 const { handleAntibotDetection } = antibotCommand; // NEW
@@ -155,7 +155,7 @@ const audiofxCommand = require('./commands/audiofx'); // USER CUSTOM
 
 // 📸 DP Save Command (NEW)
 const dpsaveCommand = require('./commands/dpsave'); // NEW
-
+const simCommand = require('./commands/sim'); // ⬅️ SIM Command
 // 📖 Quran Commands Import
 const quranCommand = require('./commands/quran'); // USER CUSTOM
 const surahmenuCommand = require('./commands/surahmenu'); // USER CUSTOM
@@ -849,6 +849,11 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 await dpsaveCommand(sock, chatId, message);
                 commandExecuted = true;
                 break;
+                // 📱 SIM LOOKUP COMMAND (NEW)
+            case userMessage.startsWith('.sim ') || userMessage === '.sim' || userMessage === '.siminfo' || userMessage.startsWith('.siminfo '):
+                await simCommand(sock, chatId, message);
+                commandExecuted = true;
+                break;
             case userMessage === '.clearsession' || userMessage === '.clearsesi':
                 await clearSessionCommand(sock, chatId, message);
                 break;
@@ -1335,7 +1340,7 @@ module.exports = {
             // Only full status messages (messages.upsert) — never reactions / empty updates
             const msg = status.messages?.[0];
             if (msg?.message && msg.key?.remoteJid === 'status@broadcast') {
-                await savestatusAutoSave(sock, msg);
+                // await savestatusAutoSave(sock, msg); // ❌ COMMENT OUT KAR DIYA
             }
         } catch (e) {
             console.error('[savestatus] hook:', e?.message || e);
