@@ -208,8 +208,11 @@ async function handleMessages(sock, messageUpdate, printLog) {
         const senderIsSudo = await isSudo(senderId);
         const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
         
-        // Owner Identification Fix
-        const isMe = senderId.includes('923325451427');
+        // ✅ FIX: Number hardcode nahi hai, settings.js se aayega
+        const settingsNumber = settings.ownerNumber || settings.owner || (settings.mods && settings.mods[0]) || '';
+        const cleanSettingsNumber = String(settingsNumber).replace(/[^0-9]/g, '');
+        const isMe = cleanSettingsNumber ? senderId.includes(cleanSettingsNumber) : false;
+        
         const isOwnerOrSudoCheck = message.key.fromMe || senderIsOwnerOrSudo || isMe;
 
         // Handle button responses
