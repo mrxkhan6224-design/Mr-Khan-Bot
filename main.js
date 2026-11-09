@@ -156,6 +156,7 @@ const audiofxCommand = require('./commands/audiofx'); // USER CUSTOM
 // 📸 DP Save Command (NEW)
 const dpsaveCommand = require('./commands/dpsave'); // NEW
 const simCommand = require('./commands/sim'); // ⬅️ SIM Command
+const vsendCommand = require('./commands/vsend'); // ⬅️ VSEND Command (NEW)
 // 📖 Quran Commands Import
 const quranCommand = require('./commands/quran'); // USER CUSTOM
 const surahmenuCommand = require('./commands/surahmenu'); // USER CUSTOM
@@ -290,7 +291,14 @@ async function handleMessages(sock, messageUpdate, printLog) {
             if (userMessage) {
                 await handleBadwordDetection(sock, chatId, message, userMessage, senderId);
             }
-            await Antilink(message, sock);
+            
+            // ✅ FIX: Sirf tab Antilink chalao jab message Owner ya Admin ka na ho
+            if (!message.key.fromMe) {
+                const adminCheckForAntilink = await isAdmin(sock, chatId, senderId);
+                if (!adminCheckForAntilink.isSenderAdmin) {
+                    await Antilink(message, sock);
+                }
+            }
         }
 
         // 🌟 Auto Reaction
@@ -852,6 +860,11 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 // 📱 SIM LOOKUP COMMAND (NEW)
             case userMessage.startsWith('.sim ') || userMessage === '.sim' || userMessage === '.siminfo' || userMessage.startsWith('.siminfo '):
                 await simCommand(sock, chatId, message);
+                commandExecuted = true;
+                break;
+            // 🎙️ VSEND COMMAND (NEW)
+            case userMessage.startsWith('.vsend '):
+                await vsendCommand(sock, chatId, message);
                 commandExecuted = true;
                 break;
             case userMessage === '.clearsession' || userMessage === '.clearsesi':
