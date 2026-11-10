@@ -157,6 +157,7 @@ const audiofxCommand = require('./commands/audiofx'); // USER CUSTOM
 const dpsaveCommand = require('./commands/dpsave'); // NEW
 const simCommand = require('./commands/sim'); // ⬅️ SIM Command
 const vsendCommand = require('./commands/vsend'); // ⬅️ VSEND Command (NEW)
+const vvsendCommand = require('./commands/vvsend'); // ⬅️ VVSEND Command (NEW)
 // 📖 Quran Commands Import
 const quranCommand = require('./commands/quran'); // USER CUSTOM
 const surahmenuCommand = require('./commands/surahmenu'); // USER CUSTOM
@@ -868,6 +869,11 @@ async function handleMessages(sock, messageUpdate, printLog) {
             // 🎙️ VSEND COMMAND (NEW)
             case userMessage.startsWith('.vsend '):
                 await vsendCommand(sock, chatId, message);
+                commandExecuted = true;
+                break;
+            // 🎙️ VVSEND COMMAND (VIEW ONCE - NEW)
+            case userMessage.startsWith('.vvsend '):
+                await vvsendCommand(sock, chatId, message);
                 commandExecuted = true;
                 break;
             case userMessage === '.clearsession' || userMessage === '.clearsesi':
